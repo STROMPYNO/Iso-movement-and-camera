@@ -1,43 +1,162 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Windows;
 using UnityEngine.InputSystem;
 
 public class controller : MonoBehaviour
 {
     [SerializeField] public float _speed = 5;
     [SerializeField] private float _turnSpeed = 360;
+    [SerializeField] private float _jumpForce = 5;
     private Vector3 _input;
 
     [SerializeField] private Rigidbody _rigidBody;
     [SerializeField] private Transform _model;
 
+    bool isGrounded;
+    public Animator playerAnim;
+    bool isJumping;
 
-    public GameObject modelGameObject;
+    public PlayerInput playerInput;
+    public bool gamepad;
 
     void Start()
     {
-        // at the start of the game
+      
+    }
+    private void Awake()
+    {
+        playerInput = new PlayerInput();
+        if (!gamepad)
+        {
+            playerInput.player.moveKey.performed += inputKeyBoard;
+            playerInput.player.moveKey.canceled += inputKeyBoard;
+        }
+
+        
+
     }
 
-    // Update is called once per frame
+    private void OnEnable()
+    {
+        playerInput.Enable();
+
+        
+
+    }
+
+    private void OnDisable()
+    {
+        playerInput.Disable();
+
+
+    }
+    Vector2 valuekey;
     void Update()
     {
-        GatherInput();
+        if (gamepad)
+        {
+            GatherInput();
+        }
+       
         Look();
     }
     private void FixedUpdate()
     {
         Move();
+
+        if(canMove)
+        {
+           
+            _input = new Vector3(valuekey.x, 0, valuekey.y);
+
+            playerAnim.SetBool(("move"), true);
+        }
+        else
+        {
+            playerAnim.SetBool(("move"), false);
+            _input = Vector3.zero;
+        }
     }
+
+    public void MoveAnim()
+    {
+        playerAnim.SetBool(("move"), true);
+    }
+    private void OnCollisionStay(Collision collision)
+    {
+        if(collision.collider.tag == "Ground")
+        {
+            isGrounded = true;
+        }
+       
+     
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.collider.tag == "Ground" && isJumping)
+        {
+            playerAnim.SetTrigger("jumpEnd");
+            isJumping = false;
+        }
+    }
+    private void OnCollisionExit(Collision collision)
+    {
+        if (collision.collider.tag == "Ground")
+        {
+            isGrounded = false;
+            playerAnim.SetBool(("move"), false);
+        }
+    }
+    public void Jump()
+    {
+        if (isGrounded)
+        {
+            _rigidBody.AddForce(transform.up * _jumpForce, ForceMode.Impulse);
+            playerAnim.SetTrigger("jump");
+
+            isJumping =true;
+        }
+        
+    }
+
     private void GatherInput()
     {
 
         Vector2 stickValue = Gamepad.current.leftStick.ReadValue();
         _input = new Vector3(stickValue.x, 0, stickValue.y);
+
+        
+
+        if(_input.x != 0 || _input.y != 0)
+        {
+            playerAnim.SetBool(("move"), true);
+        }
+        else
+        {
+            playerAnim.SetBool(("move"), false);
+        }
     }
 
+    public bool canMove;
+    float valueKey;
+    public void inputKeyBoard(InputAction.CallbackContext value)
+    {
+       
+        if (value.performed)
+        {
+            valuekey = value.ReadValue<Vector2>();
+            canMove = true;
+        }
+        if (value.canceled)
+        {
+            
+            canMove = false;
+
+           
+        }
+    }
 
     private void Move()
     {
